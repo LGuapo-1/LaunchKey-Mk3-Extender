@@ -65,6 +65,11 @@ static_assert(((uint64_t)(PRIORITY_CONTEXT0_PERIOD_USEC * CPU_MHZ) >> 1) <= 0xFF
 #define PRESET_BLOCK_BYTE_COUNT       32
 #define PRESET_INDEX_WEAR_LEVEL_COUNT 10
 
+#define CALIBRATION_SCALE_DEFAULT_MW   61
+#define CALIBRATION_OFFSET_DEFAULT_MW  54
+#define CALIBRATION_SCALE_DEFAULT_PED  36
+#define CALIBRATION_OFFSET_DEFAULT_PED 16
+
 
 //**************************************************************************************************
 // Types
@@ -196,10 +201,10 @@ bool    gIsMIDINoteBlackKeyLUT[128];
 uint8_t gMIDIVelocityBlackKeyAdjustLUT[128];
 
 bool             gIsCalibrationActive  = false;
-volatile uint8_t gCalibrationScaleMW   = 61;
-volatile uint8_t gCalibrationScalePed  = 36;
-volatile uint8_t gCalibrationOffsetMW  = 54;
-volatile uint8_t gCalibrationOffsetPed = 16;
+volatile uint8_t gCalibrationScaleMW   = CALIBRATION_SCALE_DEFAULT_MW;
+volatile uint8_t gCalibrationScalePed  = CALIBRATION_SCALE_DEFAULT_PED;
+volatile uint8_t gCalibrationOffsetMW  = CALIBRATION_OFFSET_DEFAULT_MW;
+volatile uint8_t gCalibrationOffsetPed = CALIBRATION_OFFSET_DEFAULT_PED;
 
 uint8_t gStoreState      = 0;
 uint8_t gLoadState       = 1;
@@ -1209,6 +1214,24 @@ static void LoadAll(const uint8_t presetIndex)
     gPrevPresetIndex = presetIndex;
     StorePresetIndex(presetIndex);
 
+    // Calibration values for unset EEPROM get sensible defaults  
+    uint8_t* const calibPtrs[] = { &gCalibrationScaleMW,
+                                   &gCalibrationOffsetMW,
+                                   &gCalibrationScalePed,
+                                   &gCalibrationOffsetPed };
+    const uint8_t calibDefs[] = { CALIBRATION_SCALE_DEFAULT_MW,
+                                  CALIBRATION_OFFSET_DEFAULT_MW,
+                                  CALIBRATION_SCALE_DEFAULT_PED,
+                                  CALIBRATION_OFFSET_DEFAULT_PED };
+
+    for (uint8_t i = 0; i < sizeof(calibDefs) / sizeof(calibDefs[0]); i++) {
+        uint8_t* const calibPtr = calibPtrs[i];
+        if (*calibPtr == 0xFF) {
+            *calibPtr = calibDefs[i];
+        }
+    }
+
+    // Sanity check for values
     for (uint8_t i = 0; i < gUIParamPageCount; i++) {
         UIParamPage* const paramPage = &(gUIParamPages[i]);
 
@@ -1223,6 +1246,7 @@ static void LoadAll(const uint8_t presetIndex)
         }
     }
 
+    // Update values that are set by multiple parameters
     uint16_t multN  = 0;
     uint8_t  makeup = 0;
     VelocityCompGetRatioAndMakeup(gMIDIVelocityCompThresh, gMIDIVelocityCompLimit, &multN, &makeup);
@@ -1896,7 +1920,8 @@ static bool SetupIsCalibrationActive(void)
         if (digitalRead(PIN_BUTTON) == LOW) {
             highCount++;
 
-            if (highCount > 100) {
+            if (highCount > 175) {
+                gButtonIsForceHold = true;
                 return true;
             }
         }
