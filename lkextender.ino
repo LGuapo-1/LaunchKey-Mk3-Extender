@@ -84,14 +84,14 @@ typedef uint32_t Micros;
 
 struct UIParamPage
 {
-    volatile uint8_t* valuePtr;
-    uint8_t           valueMin;
-    uint8_t           valueMax;
-    uint8_t           valueDisplayOffs;
-    bool              isReadWrite;
-    bool              isPressAndTurn;
-    bool              isCalibration;
-    const char* const label;
+    volatile uint8_t* const valuePtr;
+    const uint8_t           valueMin;
+    const uint8_t           valueMax;
+    const uint8_t           valueDisplayOffs;
+    const bool              isReadWrite;
+    const bool              isPressAndTurn;
+    const bool              isCalibration;
+    const char* const       label;
 };
 
 
@@ -218,7 +218,7 @@ U8X8_SH1106_128X64_NONAME_4W_HW_SPI gDisplay(PIN_DISPLAY_CS,
 uint8_t           gUIParamPageIndex = 0;
 constexpr uint8_t gUIParamPageCount = 22;
 
-UIParamPage gUIParamPages[gUIParamPageCount] = {
+const UIParamPage gUIParamPages[gUIParamPageCount] = {
   { &gLoadState,                        0, 1,   0, true,  false, false, "Hold to load"    },
   { &gMIDIShouldReplaceModWheel,        0, 1,   0, true,  false, false, "Mod Wheel"       },
   { &gMIDIOutputModWheelCC,             0, 127, 0, true,  true,  false, "Mod Wheel CC"    },
